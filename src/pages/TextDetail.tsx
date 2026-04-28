@@ -227,14 +227,18 @@ export function TextDetail() {
           )}
 
           <div className="mb-6">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
               {text.tags.map((tag) => (
-                <Badge key={tag} variant="outline">
+                <Badge
+                  key={tag}
+                  variant="outline"
+                  className="text-xs px-2 py-0.5"
+                >
                   {tag}
                 </Badge>
               ))}
               <span
-                className={`text-xs px-2 py-0.5 rounded ${
+                className={`text-xs px-2 py-0.5 rounded whitespace-nowrap ${
                   text.difficulty === "easy"
                     ? "bg-green-100 text-green-800"
                     : text.difficulty === "medium"
