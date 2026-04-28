@@ -151,7 +151,7 @@ export function calculateNextReview(
   if (newEaseFactor < 1.3) newEaseFactor = 1.3;
 
   let newInterval: number;
-  let newRepetitionCount = repetitionCount;
+  let newRepetitionCount: number;
 
   if (quality < 3) {
     // Failed - reset
@@ -180,7 +180,7 @@ export function calculateNextReview(
 export async function updateWordWithSRS(
   id: string,
   quality: number,
-  writtenAnswer?: string,
+  _writtenAnswer?: string, // reserved for future stats tracking
 ): Promise<Word> {
   const { data: word } = await supabase
     .from("words")
