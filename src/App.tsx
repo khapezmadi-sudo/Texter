@@ -4,6 +4,15 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Login } from "@/pages/Login";
 import { Register } from "@/pages/Register";
 import { Home } from "@/pages/Home";
+import { Texts } from "@/pages/Texts";
+import { NewText } from "@/pages/NewText";
+import { TextDetail } from "@/pages/TextDetail";
+import { Phrases } from "@/pages/Phrases";
+import { PhrasePractice } from "@/pages/PhrasePractice";
+import { Words } from "@/pages/Words";
+import { WordPractice } from "@/pages/WordPractice";
+import { Stats } from "@/pages/Stats";
+import { Settings } from "@/pages/Settings";
 
 function App() {
   return (
@@ -17,6 +26,78 @@ function App() {
             element={
               <ProtectedRoute>
                 <Home />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/texts"
+            element={
+              <ProtectedRoute>
+                <Texts />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/texts/new"
+            element={
+              <ProtectedRoute>
+                <NewText />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/texts/:id"
+            element={
+              <ProtectedRoute>
+                <TextDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/phrases"
+            element={
+              <ProtectedRoute>
+                <Phrases />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/phrases/practice"
+            element={
+              <ProtectedRoute>
+                <PhrasePractice />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/words"
+            element={
+              <ProtectedRoute>
+                <Words />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/words/practice"
+            element={
+              <ProtectedRoute>
+                <WordPractice />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/stats"
+            element={
+              <ProtectedRoute>
+                <Stats />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Settings />
               </ProtectedRoute>
             }
           />
