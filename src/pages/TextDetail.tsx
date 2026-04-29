@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Sidebar } from "@/components/Sidebar";
 import { MobileNav } from "@/components/MobileNav";
 import { Button } from "@/components/ui/button";
+import { AIPromptButton } from "@/components/AIPromptButton";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -556,6 +557,17 @@ export function TextDetail() {
                   >
                     Назад к переводу
                   </Button>
+                </div>
+
+                <div className="mt-4 pt-4 border-t">
+                  <AIPromptButton
+                    originalText={text?.content || ""}
+                    translatedText={translation}
+                    rating={rating}
+                    errors={errors}
+                    notes={notes}
+                    className="w-full"
+                  />
                 </div>
               </CardContent>
             </Card>
