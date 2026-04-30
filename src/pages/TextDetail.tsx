@@ -3,7 +3,18 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Sidebar } from "@/components/Sidebar";
 import { MobileNav } from "@/components/MobileNav";
 import { Button } from "@/components/ui/button";
-import { AIPromptButton } from "@/components/AIPromptButton";
+import {
+  generateAIPrompt,
+  parseAIResponse,
+  type ErrorExample,
+} from "@/lib/ai-prompt";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +32,12 @@ import {
   BookOpen,
   Pencil,
   X,
+  History,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Check,
+  Sparkles,
 } from "lucide-react";
 import {
   getText,
@@ -53,8 +70,17 @@ export function TextDetail() {
     word_order: false,
     punctuation: false,
   });
+  const [customErrorTypes, setCustomErrorTypes] = useState<string[]>([]);
+  const [newErrorType, setNewErrorType] = useState("");
   const [notes, setNotes] = useState("");
   const [extractedWords, setExtractedWords] = useState("");
+  const [errorExamples, setErrorExamples] = useState<ErrorExample[]>([]);
+
+  // History and AI import states
+  const [showHistory, setShowHistory] = useState(false);
+  const [aiResponse, setAiResponse] = useState("");
+  const [showAIImport, setShowAIImport] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
@@ -135,6 +161,114 @@ export function TextDetail() {
     }, 100);
   };
 
+  // Функции для кастомных типов ошибок
+  const handleAddErrorType = () => {
+    if (
+      newErrorType.trim() &&
+      !customErrorTypes.includes(newErrorType.trim())
+    ) {
+      setCustomErrorTypes([...customErrorTypes, newErrorType.trim()]);
+      setNewErrorType("");
+    }
+  };
+
+  const handleRemoveErrorType = (type: string) => {
+    setCustomErrorTypes(customErrorTypes.filter((t) => t !== type));
+  };
+
+  // Функция для импорта ответа от ИИ
+  const handleImportAIResponse = () => {
+    if (!aiResponse.trim()) return;
+
+    const parsed = parseAIResponse(aiResponse);
+
+    if (parsed.rating > 0) {
+      setRating(parsed.rating);
+    }
+
+    if (parsed.error_types.length > 0) {
+      // Обновляем стандартные чекбоксы если есть совпадения
+      const standardErrors = {
+        articles: false,
+        tenses: false,
+        prepositions: false,
+        vocabulary: false,
+        word_order: false,
+        punctuation: false,
+      };
+
+      const customTypes: string[] = [];
+
+      parsed.error_types.forEach((type) => {
+        const lower = type.toLowerCase();
+        if (lower.includes("артикл")) standardErrors.articles = true;
+        else if (lower.includes("врем") || lower.includes(" tense"))
+          standardErrors.tenses = true;
+        else if (lower.includes("предлог")) standardErrors.prepositions = true;
+        else if (lower.includes("лексик") || lower.includes("слов"))
+          standardErrors.vocabulary = true;
+        else if (lower.includes("порядок") || lower.includes("word order"))
+          standardErrors.word_order = true;
+        else if (lower.includes("пунктуац")) standardErrors.punctuation = true;
+        else customTypes.push(type);
+      });
+
+      setErrors(standardErrors);
+      setCustomErrorTypes(customTypes);
+    }
+
+    if (parsed.notes) {
+      setNotes(parsed.notes);
+    }
+
+    if (parsed.words_to_learn.length > 0) {
+      setExtractedWords(parsed.words_to_learn.join(", "));
+    }
+
+    if (parsed.error_examples.length > 0) {
+      setErrorExamples(parsed.error_examples);
+    }
+
+    setShowAIImport(false);
+    setAiResponse("");
+  };
+
+  // Функции для работы с примерами ошибок
+  const handleAddErrorExample = () => {
+    setErrorExamples([
+      ...errorExamples,
+      { original: "", error_type: "", corrected: "", explanation: "" },
+    ]);
+  };
+
+  const handleUpdateErrorExample = (
+    index: number,
+    field: keyof ErrorExample,
+    value: string,
+  ) => {
+    const updated = [...errorExamples];
+    updated[index] = { ...updated[index], [field]: value };
+    setErrorExamples(updated);
+  };
+
+  const handleRemoveErrorExample = (index: number) => {
+    setErrorExamples(errorExamples.filter((_, i) => i !== index));
+  };
+
+  // Функция для копирования промпта
+  const handleCopyPrompt = () => {
+    const prompt = generateAIPrompt({
+      originalText: text?.content || "",
+      translatedText: translation,
+      rating,
+      errors,
+      notes,
+    });
+    navigator.clipboard.writeText(prompt);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const handleSaveAnalysis = async () => {
     if (!text || !translation.trim()) return;
 
@@ -145,6 +279,8 @@ export function TextDetail() {
         translation: translation.trim(),
         rating,
         errors,
+        custom_error_types: customErrorTypes,
+        error_examples: errorExamples,
         notes: notes.trim(),
         extracted_words: extractedWords
           .split(",")
@@ -510,6 +646,47 @@ export function TextDetail() {
                       </label>
                     ))}
                   </div>
+
+                  {/* Кастомные типы ошибок */}
+                  <div className="mt-4">
+                    <Label className="mb-2 block text-sm text-muted-foreground">
+                      Свои типы ошибок
+                    </Label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {customErrorTypes.map((type) => (
+                        <Badge
+                          key={type}
+                          variant="secondary"
+                          className="cursor-pointer hover:bg-red-100"
+                          onClick={() => handleRemoveErrorType(type)}
+                        >
+                          {type} ×
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Например: фразовые глаголы, согласование..."
+                        value={newErrorType}
+                        onChange={(e) => setNewErrorType(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddErrorType();
+                          }
+                        }}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAddErrorType}
+                      >
+                        Добавить
+                      </Button>
+                    </div>
+                  </div>
                 </div>
 
                 <div>
@@ -521,6 +698,117 @@ export function TextDetail() {
                     onChange={(e) => setNotes(e.target.value)}
                     className="mt-2"
                   />
+                </div>
+
+                {/* Примеры ошибок */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label>Примеры ошибок</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddErrorExample}
+                    >
+                      Добавить пример
+                    </Button>
+                  </div>
+
+                  {errorExamples.length === 0 && (
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Нет примеров. Добавь или импортируй из ИИ.
+                    </p>
+                  )}
+
+                  <div className="space-y-3">
+                    {errorExamples.map((example, index) => (
+                      <Card key={index} className="bg-muted/50">
+                        <CardContent className="p-3 space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-xs text-muted-foreground">
+                                Оригинал (с ошибкой)
+                              </Label>
+                              <Input
+                                value={example.original}
+                                onChange={(e) =>
+                                  handleUpdateErrorExample(
+                                    index,
+                                    "original",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="i doctor"
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-muted-foreground">
+                                Исправлено
+                              </Label>
+                              <Input
+                                value={example.corrected}
+                                onChange={(e) =>
+                                  handleUpdateErrorExample(
+                                    index,
+                                    "corrected",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="I am a doctor"
+                                className="mt-1"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-xs text-muted-foreground">
+                                Тип ошибки
+                              </Label>
+                              <Input
+                                value={example.error_type}
+                                onChange={(e) =>
+                                  handleUpdateErrorExample(
+                                    index,
+                                    "error_type",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="артикли"
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-muted-foreground">
+                                Почему так
+                              </Label>
+                              <Input
+                                value={example.explanation}
+                                onChange={(e) =>
+                                  handleUpdateErrorExample(
+                                    index,
+                                    "explanation",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="Нужен глагол to be и артикль"
+                                className="mt-1"
+                              />
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 h-7"
+                            onClick={() => handleRemoveErrorExample(index)}
+                          >
+                            Удалить пример
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
 
                 <div>
@@ -559,21 +847,232 @@ export function TextDetail() {
                   </Button>
                 </div>
 
+                {/* AI анализ блок */}
                 <div className="mt-4 pt-4 border-t">
-                  <AIPromptButton
-                    originalText={text?.content || ""}
-                    translatedText={translation}
-                    rating={rating}
-                    errors={errors}
-                    notes={notes}
-                    className="w-full"
-                  />
+                  <div className="flex gap-2 mb-4">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={handleCopyPrompt}
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="h-4 w-4 mr-2" />
+                          Скопировано!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Копировать промпт для ИИ
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setShowAIImport(true)}
+                    >
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Вставить ответ от ИИ
+                    </Button>
+                  </div>
                 </div>
+
+                {/* История попыток */}
+                {attempts.length > 0 && (
+                  <div className="mt-6 pt-4 border-t">
+                    <div className="flex items-center justify-between mb-3">
+                      <Label className="flex items-center gap-2">
+                        <History className="h-4 w-4" />
+                        История попыток ({attempts.length})
+                      </Label>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowHistory(!showHistory)}
+                      >
+                        {showHistory ? (
+                          <>
+                            <ChevronUp className="h-4 w-4 mr-1" />
+                            Скрыть
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="h-4 w-4 mr-1" />
+                            Показать
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+                    {showHistory && (
+                      <div className="space-y-3 max-h-96 overflow-y-auto">
+                        {attempts.map((attempt, index) => (
+                          <Card key={attempt.id} className="bg-muted/50">
+                            <CardContent className="p-3">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium">
+                                  Попытка {attempts.length - index}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm">
+                                    {"⭐".repeat(attempt.rating)}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {new Date(
+                                      attempt.created_at,
+                                    ).toLocaleDateString("ru-RU")}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Типы ошибок */}
+                              <div className="flex flex-wrap gap-1 mb-2">
+                                {Object.entries(attempt.errors)
+                                  .filter(([, hasError]) => hasError)
+                                  .map(([key]) => {
+                                    const labels: Record<string, string> = {
+                                      articles: "Артикли",
+                                      tenses: "Времена",
+                                      prepositions: "Предлоги",
+                                      vocabulary: "Лексика",
+                                      word_order: "Порядок слов",
+                                      punctuation: "Пунктуация",
+                                    };
+                                    return (
+                                      <Badge
+                                        key={key}
+                                        variant="outline"
+                                        className="text-xs"
+                                      >
+                                        {labels[key] || key}
+                                      </Badge>
+                                    );
+                                  })}
+                                {attempt.custom_error_types?.map((type) => (
+                                  <Badge
+                                    key={type}
+                                    variant="secondary"
+                                    className="text-xs"
+                                  >
+                                    {type}
+                                  </Badge>
+                                ))}
+                              </div>
+
+                              {/* Заметки */}
+                              {attempt.notes && (
+                                <div className="text-sm text-muted-foreground mt-2">
+                                  <p className="font-medium text-xs mb-1">
+                                    Заметки:
+                                  </p>
+                                  <p className="line-clamp-3">
+                                    {attempt.notes}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Примеры ошибок в истории */}
+                              {attempt.error_examples?.length > 0 && (
+                                <div className="mt-2">
+                                  <p className="font-medium text-xs mb-1">
+                                    Примеры ошибок:
+                                  </p>
+                                  <div className="space-y-1">
+                                    {attempt.error_examples.map(
+                                      (
+                                        ex: {
+                                          original: string;
+                                          corrected: string;
+                                          error_type: string;
+                                        },
+                                        i: number,
+                                      ) => (
+                                        <div
+                                          key={i}
+                                          className="text-xs bg-white/50 p-2 rounded"
+                                        >
+                                          <span className="text-red-600 line-through">
+                                            {ex.original}
+                                          </span>
+                                          {" → "}
+                                          <span className="text-green-600">
+                                            {ex.corrected}
+                                          </span>
+                                          <span className="text-muted-foreground ml-1">
+                                            ({ex.error_type})
+                                          </span>
+                                        </div>
+                                      ),
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Слова */}
+                              {attempt.extracted_words.length > 0 && (
+                                <div className="text-sm text-muted-foreground mt-2">
+                                  <p className="font-medium text-xs mb-1">
+                                    Слова:
+                                  </p>
+                                  <p>{attempt.extracted_words.join(", ")}</p>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
         </div>
       </div>
+
+      {/* Dialog для импорта ответа от ИИ */}
+      {showAIImport && (
+        <Dialog open={showAIImport} onOpenChange={setShowAIImport}>
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Импорт анализа от ИИ</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <p className="text-sm text-muted-foreground">
+                Вставь ответ от ИИ в формате:
+                <br />
+                ### ОЦЕНКА: 4
+                <br />
+                ### ТИПЫ ОШИБОК: артикли, предлоги
+                <br />
+                ### ЗАМЕТКИ: ...
+                <br />
+                ### СЛОВА ДЛЯ ЗАПОМИНАНИЯ: word1, word2
+              </p>
+              <Textarea
+                placeholder="Вставь ответ от ИИ здесь..."
+                value={aiResponse}
+                onChange={(e) => setAiResponse(e.target.value)}
+                rows={15}
+                className="font-mono text-sm"
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAIImport(false)}>
+                Отмена
+              </Button>
+              <Button
+                onClick={handleImportAIResponse}
+                disabled={!aiResponse.trim()}
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Импортировать
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

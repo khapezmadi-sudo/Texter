@@ -107,14 +107,14 @@ export function Reading() {
               </Button>
             </div>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center gap-2">
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   placeholder="Поиск текстов..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 w-full"
                 />
               </div>
             </div>
@@ -253,24 +253,15 @@ export function Reading() {
                     {filteredTexts.map((text) => (
                       <Card
                         key={text.id}
-                        className="cursor-pointer hover:shadow-md transition-shadow"
+                        className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.99]"
                         onClick={() => navigate(`/reading/${text.id}`)}
                       >
-                        <CardHeader>
+                        <CardHeader className="p-4 md:p-6">
                           <div className="space-y-2">
-                            <CardTitle className="text-lg">
+                            <CardTitle className="text-base md:text-lg leading-tight">
                               {text.title}
                             </CardTitle>
-                            <div className="flex flex-wrap gap-2">
-                              {text.tags.map((tag) => (
-                                <Badge
-                                  key={tag}
-                                  variant="outline"
-                                  className="text-xs"
-                                >
-                                  {tag}
-                                </Badge>
-                              ))}
+                            <div className="flex flex-wrap gap-1.5 md:gap-2">
                               <Badge
                                 className={`text-xs ${
                                   text.difficulty === "easy"
@@ -286,7 +277,24 @@ export function Reading() {
                                     ? "Средний"
                                     : "Сложный"}
                               </Badge>
+                              {text.tags.slice(0, 3).map((tag) => (
+                                <Badge
+                                  key={tag}
+                                  variant="outline"
+                                  className="text-xs"
+                                >
+                                  {tag}
+                                </Badge>
+                              ))}
+                              {text.tags.length > 3 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{text.tags.length - 3}
+                                </Badge>
+                              )}
                             </div>
+                            <p className="text-xs md:text-sm text-gray-500 line-clamp-2">
+                              {text.content.substring(0, 100)}...
+                            </p>
                           </div>
                         </CardHeader>
                       </Card>

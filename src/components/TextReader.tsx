@@ -40,32 +40,51 @@ export function TextReader({
     return sentence || "";
   };
 
-  const handleTextSelection = () => {
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed) {
-      setSelection(null);
-      return;
-    }
+  const handleTextSelection = (e?: React.MouseEvent | React.TouchEvent) => {
+    // На мобильных устройствах нужна небольшая задержка для корректного получения выделения
+    const processSelection = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed) {
+        setSelection(null);
+        return;
+      }
 
-    const selectedText = selection.toString().trim();
-    if (selectedText && selectedText.split(" ").length === 1) {
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
+      const selectedText = sel.toString().trim();
+      // Разрешаем слова с дефисами и апострофами (don't, well-known)
+      const isValidWord = /^[a-zA-Z]+(['-][a-zA-Z]+)?$/.test(selectedText);
 
-      // Получаем контент текста
-      const textContent = contentRef.current?.textContent || "";
-      const context = getSentenceWithWord(selectedText, textContent);
+      if (selectedText && isValidWord) {
+        const range = sel.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
 
-      setSelection({
-        text: selectedText,
-        x: rect.left + rect.width / 2,
-        y: rect.top - 10,
-        context,
-      });
-      setSelectedWord(selectedText);
+        // Получаем контент текста
+        const textContent = contentRef.current?.textContent || "";
+        const context = getSentenceWithWord(selectedText, textContent);
+
+        // На мобильных позиционируем относительно viewport
+        const isMobile = window.innerWidth < 768;
+
+        setSelection({
+          text: selectedText,
+          x: isMobile ? window.innerWidth / 2 : rect.left + rect.width / 2,
+          y: isMobile ? window.innerHeight - 100 : rect.top - 10,
+          context,
+        });
+        setSelectedWord(selectedText);
+      } else {
+        // Если выделено несколько слов или не слово - игнорируем
+        if (selectedText.split(/\s+/).length > 1) {
+          setSelection(null);
+          setSelectedWord("");
+        }
+      }
+    };
+
+    // Для touch событий добавляем небольшую задержку
+    if (e?.type === "touchend") {
+      setTimeout(processSelection, 100);
     } else {
-      setSelection(null);
-      setSelectedWord("");
+      processSelection();
     }
   };
 
@@ -132,9 +151,17 @@ export function TextReader({
           <div
             ref={contentRef}
             className="prose prose-gray max-w-none leading-relaxed text-base select-text cursor-text"
-            onMouseUp={handleTextSelection}
-            style={{ lineHeight: "1.8" }}
+            onMouseUp={(e) => handleTextSelection(e)}
+            onTouchEnd={(e) => handleTextSelection(e)}
+            style={{
+              lineHeight: "1.8",
+              WebkitUserSelect: "text",
+              userSelect: "text",
+            }}
           >
+            <div className="md:hidden text-xs text-gray-400 mb-2">
+              💡 Зажмите палец на слове, затем отпустите чтобы выделить
+            </div>
             {content.split("\n").map((paragraph, index) => (
               <p key={index} className="mb-4">
                 {paragraph}
@@ -147,11 +174,11 @@ export function TextReader({
       {/* Всплывающее меню для выделенного слова */}
       {selection && (
         <div
-          className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-3 md:p-4 flex flex-col gap-2 md:gap-3 min-w-[280px] md:min-w-[320px] max-w-[90vw]"
+          className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-3 md:p-4 flex flex-col gap-2 md:gap-3 w-[calc(100vw-40px)] md:min-w-[320px] md:w-auto max-w-[320px]"
           style={{
-            left: `min(max(${selection.x}px, 20px), calc(100vw - 300px))`,
-            top: `${selection.y}px`,
-            transform: "translateY(-100%)",
+            left: "50%",
+            bottom: "20px",
+            transform: "translateX(-50%)",
           }}
         >
           <div className="text-sm md:text-base font-medium text-gray-700 border-b pb-2">
@@ -161,9 +188,9 @@ export function TextReader({
             </span>
           </div>
           <div className="text-xs md:text-sm text-gray-500 mb-2 md:mb-3">
-            💡 Выделите любое слово в тексте и нажмите "Добавить в словарь"
+            💡 Нажмите "Добавить" чтобы сохранить слово с примером из текста
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-row gap-2">
             <Button
               size="sm"
               onClick={handleAddWithTranslation}
@@ -177,8 +204,7 @@ export function TextReader({
               onClick={() => setSelection(null)}
               className="text-xs md:text-sm h-10 md:h-9 px-4"
             >
-              <X className="h-4 w-4 md:h-3 md:w-3 mr-1 md:mr-0" />
-              <span className="sm:hidden">Отмена</span>
+              <X className="h-4 w-4" />
             </Button>
           </div>
         </div>

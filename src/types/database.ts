@@ -17,6 +17,7 @@ export interface TranslationAttempt {
   user_id: string;
   translation: string;
   rating: number;
+  // Стандартные ошибки (checkbox)
   errors: {
     articles: boolean;
     tenses: boolean;
@@ -25,6 +26,15 @@ export interface TranslationAttempt {
     word_order: boolean;
     punctuation: boolean;
   };
+  // Кастомные типы ошибок (добавленные пользователем)
+  custom_error_types: string[];
+  // Примеры ошибок с исправлениями
+  error_examples: {
+    original: string;
+    error_type: string;
+    corrected: string;
+    explanation: string;
+  }[];
   notes: string;
   extracted_words: string[];
   duration_seconds?: number;
