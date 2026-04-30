@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Sidebar } from "@/components/Sidebar";
 import { MobileNav } from "@/components/MobileNav";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,7 @@ export function Words() {
   const [partOfSpeech, setPartOfSpeech] =
     useState<Word["part_of_speech"]>("noun");
   const [example, setExample] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadWords();
@@ -430,7 +431,12 @@ export function Words() {
                           )}
                         </div>
                         <div className="flex items-center gap-2">
-                          <p className="text-lg font-medium">{word.english}</p>
+                          <p
+                            className="text-lg font-medium cursor-pointer hover:text-blue-600 transition-colors"
+                            onClick={() => navigate(`/words/${word.id}`)}
+                          >
+                            {word.english}
+                          </p>
                           {word.transcription && (
                             <span className="text-muted-foreground text-sm">
                               {word.transcription}

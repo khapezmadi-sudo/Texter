@@ -26,6 +26,11 @@ import {
   deletePhrase,
   updatePhrase,
 } from "@/lib/phrases";
+import {
+  getAllUserPhrases,
+  deleteWordPhrase,
+  type WordPhrase,
+} from "@/lib/wordPhrases";
 import type { Phrase } from "@/types/phrases";
 
 const CATEGORIES = [
@@ -39,11 +44,15 @@ const CATEGORIES = [
 
 export function Phrases() {
   const [phrases, setPhrases] = useState<Phrase[]>([]);
+  const [wordPhrases, setWordPhrases] = useState<WordPhrase[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<
+    "all" | "phrases" | "word-phrases"
+  >("all");
 
   // Form state
   const [english, setEnglish] = useState("");
@@ -57,14 +66,41 @@ export function Phrases() {
 
   async function loadPhrases() {
     try {
-      const data = await getPhrases();
-      setPhrases(data);
+      const [phrasesData, wordPhrasesData] = await Promise.all([
+        getPhrases(),
+        getAllUserPhrases(),
+      ]);
+      setPhrases(phrasesData);
+      setWordPhrases(wordPhrasesData);
     } catch (error) {
       console.error("Error loading phrases:", error);
     } finally {
       setLoading(false);
     }
   }
+
+  // Объединяем все фразы для отображения
+  const allPhrases = [
+    ...phrases.map((p) => ({ ...p, type: "phrase" as const })),
+    ...wordPhrases.map((p) => ({
+      id: p.id,
+      english: p.english,
+      russian: p.russian,
+      category: "Из слов",
+      context: p.context,
+      status: "learning" as const,
+      review_count: 0,
+      last_reviewed: p.created_at,
+      created_at: p.created_at,
+      user_id: p.user_id,
+      type: "word-phrase" as const,
+      word_id: p.word_id,
+    })),
+  ].filter((p) => {
+    if (activeTab === "phrases") return p.type === "phrase";
+    if (activeTab === "word-phrases") return p.type === "word-phrase";
+    return true;
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,10 +127,14 @@ export function Phrases() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (phrase: (typeof allPhrases)[0]) => {
     if (!confirm("Удалить эту фразу?")) return;
     try {
-      await deletePhrase(id);
+      if (phrase.type === "word-phrase") {
+        await deleteWordPhrase(phrase.id);
+      } else {
+        await deletePhrase(phrase.id);
+      }
       loadPhrases();
     } catch (error) {
       console.error("Error deleting phrase:", error);
@@ -153,18 +193,19 @@ export function Phrases() {
     }
   };
 
-  const filteredPhrases = phrases.filter(
+  const filteredPhrases = allPhrases.filter(
     (p) =>
       p.english.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.russian.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.category.toLowerCase().includes(searchQuery.toLowerCase()),
+      p.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.context?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const stats = {
-    total: phrases.length,
-    new: phrases.filter((p) => p.status === "new").length,
-    learning: phrases.filter((p) => p.status === "learning").length,
-    known: phrases.filter((p) => p.status === "known").length,
+    total: allPhrases.length,
+    new: allPhrases.filter((p) => p.status === "new").length,
+    learning: allPhrases.filter((p) => p.status === "learning").length,
+    known: allPhrases.filter((p) => p.status === "known").length,
   };
 
   return (
@@ -177,7 +218,7 @@ export function Phrases() {
             <div>
               <h1 className="text-3xl font-bold">Фразы</h1>
               <p className="text-muted-foreground mt-1">
-                Добавляй и учи английские фразы
+                Учи полезные английские фразы
               </p>
             </div>
             <div className="flex gap-2">
@@ -192,6 +233,31 @@ export function Phrases() {
                 Добавить фразу
               </Button>
             </div>
+          </div>
+
+          {/* Табы для фильтрации */}
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <Button
+              variant={activeTab === "all" ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setActiveTab("all")}
+            >
+              Все ({phrases.length + wordPhrases.length})
+            </Button>
+            <Button
+              variant={activeTab === "phrases" ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setActiveTab("phrases")}
+            >
+              Фразы ({phrases.length})
+            </Button>
+            <Button
+              variant={activeTab === "word-phrases" ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setActiveTab("word-phrases")}
+            >
+              Из слов ({wordPhrases.length})
+            </Button>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 lg:gap-4 mb-6 lg:mb-8">
@@ -347,20 +413,28 @@ export function Phrases() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="outline">{phrase.category}</Badge>
+                          {phrase.type === "word-phrase" && (
+                            <Badge
+                              variant="secondary"
+                              className="bg-purple-100 text-purple-800"
+                            >
+                              Из слов
+                            </Badge>
+                          )}
                           <Badge
                             variant={
                               phrase.status === "known"
-                                ? "secondary"
+                                ? "default"
                                 : phrase.status === "learning"
-                                  ? "default"
+                                  ? "secondary"
                                   : "outline"
                             }
                           >
-                            {phrase.status === "known" && "Знаю"}
-                            {phrase.status === "learning" && "Изучаю"}
                             {phrase.status === "new" && "Новая"}
+                            {phrase.status === "learning" && "Изучаю"}
+                            {phrase.status === "known" && "Знаю"}
                           </Badge>
-                          <Badge variant="outline">{phrase.category}</Badge>
                           {phrase.review_count > 0 && (
                             <span className="text-xs text-muted-foreground">
                               Повторений: {phrase.review_count}
@@ -398,7 +472,7 @@ export function Phrases() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDelete(phrase.id)}
+                          onClick={() => handleDelete(phrase)}
                         >
                           <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>

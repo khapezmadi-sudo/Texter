@@ -7,9 +7,12 @@ import { Home } from "@/pages/Home";
 import { Texts } from "@/pages/Texts";
 import { NewText } from "@/pages/NewText";
 import { TextDetail } from "@/pages/TextDetail";
+import { Reading } from "@/pages/Reading";
+import { ReadingDetail } from "@/pages/ReadingDetail";
 import { Phrases } from "@/pages/Phrases";
 import { PhrasePractice } from "@/pages/PhrasePractice";
 import { Words } from "@/pages/Words";
+import { WordDetail } from "@/pages/WordDetail";
 import { WordPractice } from "@/pages/WordPractice";
 import { Stats } from "@/pages/Stats";
 import { Settings } from "@/pages/Settings";
@@ -54,6 +57,22 @@ function App() {
             }
           />
           <Route
+            path="/reading"
+            element={
+              <ProtectedRoute>
+                <Reading />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reading/:id"
+            element={
+              <ProtectedRoute>
+                <ReadingDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/phrases"
             element={
               <ProtectedRoute>
@@ -74,6 +93,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Words />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/words/:id"
+            element={
+              <ProtectedRoute>
+                <WordDetail />
               </ProtectedRoute>
             }
           />

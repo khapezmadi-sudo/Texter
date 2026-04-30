@@ -8,13 +8,11 @@ import {
   Settings,
   LogOut,
   Menu,
-  AlertCircle,
-  CheckCircle2,
-  Clock,
   Quote,
   Library,
   Flame,
   X,
+  BookOpen,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
@@ -31,7 +29,8 @@ export function MobileNav({ streak = 0 }: MobileNavProps) {
 
   const navItems = [
     { path: "/", icon: Home, label: "Главная" },
-    { path: "/texts", icon: FileText, label: "Тексты" },
+    { path: "/texts", icon: FileText, label: "Переводы" },
+    { path: "/reading", icon: BookOpen, label: "Чтение" },
     { path: "/phrases", icon: Quote, label: "Фразы" },
     { path: "/words", icon: Library, label: "Слова" },
     { path: "/stats", icon: BarChart3, label: "Статистика" },
@@ -51,11 +50,7 @@ export function MobileNav({ streak = 0 }: MobileNavProps) {
             </div>
           )}
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsOpen(true)}
-        >
+        <Button variant="ghost" size="sm" onClick={() => setIsOpen(true)}>
           <Menu className="h-6 w-6" />
         </Button>
       </div>
@@ -98,48 +93,6 @@ export function MobileNav({ streak = 0 }: MobileNavProps) {
                     </Button>
                   </Link>
                 ))}
-              </div>
-
-              <div className="px-3 mt-4">
-                <p className="text-xs font-medium text-muted-foreground mb-2 px-2">
-                  ФИЛЬТРЫ ТЕКСТОВ
-                </p>
-                <Link
-                  to="/texts?filter=important"
-                  onClick={() => setIsOpen(false)}
-                >
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start gap-3 text-red-600 hover:text-red-600 hover:bg-red-50"
-                  >
-                    <AlertCircle className="h-4 w-4" />
-                    Важные
-                  </Button>
-                </Link>
-                <Link
-                  to="/texts?filter=drafts"
-                  onClick={() => setIsOpen(false)}
-                >
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start gap-3"
-                  >
-                    <Clock className="h-4 w-4" />
-                    Черновики
-                  </Button>
-                </Link>
-                <Link
-                  to="/texts?filter=completed"
-                  onClick={() => setIsOpen(false)}
-                >
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start gap-3"
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    Завершённые
-                  </Button>
-                </Link>
               </div>
             </div>
 

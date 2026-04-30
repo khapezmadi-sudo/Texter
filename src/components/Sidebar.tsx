@@ -9,12 +9,10 @@ import {
   BarChart3,
   Settings,
   LogOut,
-  AlertCircle,
-  CheckCircle2,
-  Clock,
   Flame,
   Quote,
   Library,
+  BookOpen,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { getStreakInfo } from "@/lib/words";
@@ -40,7 +38,8 @@ export function Sidebar() {
 
   const navItems = [
     { path: "/", icon: Home, label: "Главная" },
-    { path: "/texts", icon: FileText, label: "Тексты" },
+    { path: "/texts", icon: FileText, label: "Переводы" },
+    { path: "/reading", icon: BookOpen, label: "Чтение" },
     { path: "/phrases", icon: Quote, label: "Фразы" },
     { path: "/words", icon: Library, label: "Слова" },
     { path: "/stats", icon: BarChart3, label: "Статистика" },
@@ -69,35 +68,6 @@ export function Sidebar() {
               </Button>
             </Link>
           ))}
-        </div>
-
-        <Separator className="my-4" />
-
-        <div className="px-3">
-          <p className="text-xs font-medium text-muted-foreground mb-2 px-2">
-            ФИЛЬТРЫ ТЕКСТОВ
-          </p>
-          <Link to="/texts?filter=important">
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 text-red-600 hover:text-red-600 hover:bg-red-50"
-            >
-              <AlertCircle className="h-4 w-4" />
-              Важные
-            </Button>
-          </Link>
-          <Link to="/texts?filter=drafts">
-            <Button variant="ghost" className="w-full justify-start gap-3">
-              <Clock className="h-4 w-4" />
-              Черновики
-            </Button>
-          </Link>
-          <Link to="/texts?filter=completed">
-            <Button variant="ghost" className="w-full justify-start gap-3">
-              <CheckCircle2 className="h-4 w-4" />
-              Завершённые
-            </Button>
-          </Link>
         </div>
 
         <Separator className="my-4" />
