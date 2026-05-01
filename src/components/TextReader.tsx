@@ -1,9 +1,12 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Volume2, X } from "lucide-react";
+import { Volume2, X, BookOpen, ExternalLink } from "lucide-react";
 import { AddWordModal } from "./AddWordModal";
+import { getWords } from "@/lib/words";
+import type { Word } from "@/types/words";
+import { useNavigate } from "react-router-dom";
 
 interface TextReaderProps {
   title: string;
@@ -19,6 +22,7 @@ export function TextReader({
   tags,
   difficulty,
 }: TextReaderProps) {
+  const navigate = useNavigate();
   const [selectedWord, setSelectedWord] = useState<string>("");
   const [selection, setSelection] = useState<{
     text: string;
@@ -27,7 +31,22 @@ export function TextReader({
     context: string;
   } | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [userWords, setUserWords] = useState<Word[]>([]);
+  const [existingWord, setExistingWord] = useState<Word | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // Load user's dictionary
+  useEffect(() => {
+    const loadWords = async () => {
+      try {
+        const words = await getWords();
+        setUserWords(words);
+      } catch (error) {
+        console.error("Error loading words:", error);
+      }
+    };
+    loadWords();
+  }, []);
 
   // Функция для извлечения предложения с выделенным словом
   const getSentenceWithWord = (word: string, textContent: string): string => {
@@ -46,6 +65,7 @@ export function TextReader({
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed) {
         setSelection(null);
+        setExistingWord(null);
         return;
       }
 
@@ -60,6 +80,12 @@ export function TextReader({
         // Получаем контент текста
         const textContent = contentRef.current?.textContent || "";
         const context = getSentenceWithWord(selectedText, textContent);
+
+        // Проверяем есть ли слово в словаре
+        const found = userWords.find(
+          (w) => w.english.toLowerCase() === selectedText.toLowerCase(),
+        );
+        setExistingWord(found || null);
 
         // На мобильных позиционируем относительно viewport
         const isMobile = window.innerWidth < 768;
@@ -76,6 +102,7 @@ export function TextReader({
         if (selectedText.split(/\s+/).length > 1) {
           setSelection(null);
           setSelectedWord("");
+          setExistingWord(null);
         }
       }
     };
@@ -187,24 +214,62 @@ export function TextReader({
               "{selection.text}"
             </span>
           </div>
-          <div className="text-xs md:text-sm text-gray-500 mb-2 md:mb-3">
-            💡 Нажмите "Добавить" чтобы сохранить слово с примером из текста
-          </div>
-          <div className="flex flex-row gap-2">
-            <Button
-              size="sm"
-              onClick={handleAddWithTranslation}
-              className="text-xs md:text-sm h-10 md:h-9 flex-1"
-            >
-              📚 Добавить в словарь
-            </Button>
+
+          {/* Показываем данные существующего слова */}
+          {existingWord ? (
+            <div className="bg-green-50 p-2 rounded-md">
+              <div className="flex items-center gap-1 text-green-700 text-xs mb-1">
+                <BookOpen className="h-3 w-3" />
+                <span>Уже в словаре</span>
+              </div>
+              <p className="font-medium text-sm">{existingWord.russian}</p>
+              {existingWord.transcription && (
+                <p className="text-xs text-gray-500">
+                  {existingWord.transcription}
+                </p>
+              )}
+              <p className="text-xs text-gray-500 mt-1">
+                {existingWord.part_of_speech}
+                {existingWord.status === "known" && " • Изучено"}
+                {existingWord.status === "learning" && " • Учу"}
+              </p>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs h-7 mt-1 w-full"
+                onClick={() => navigate(`/words/${existingWord.id}`)}
+              >
+                <ExternalLink className="h-3 w-3 mr-1" />
+                Открыть в словаре
+              </Button>
+            </div>
+          ) : (
+            <div className="text-xs md:text-sm text-gray-500 mb-2 md:mb-3">
+              💡 Нажмите "Добавить" чтобы сохранить слово с примером из текста
+            </div>
+          )}
+
+          <div className="flex flex-row gap-2 w-full">
+            {!existingWord && (
+              <Button
+                size="sm"
+                onClick={handleAddWithTranslation}
+                className="text-xs md:text-sm flex-1 min-w-0"
+              >
+                📚 Добавить
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setSelection(null)}
-              className="text-xs md:text-sm h-10 md:h-9 px-4"
+              onClick={() => {
+                setSelection(null);
+                setExistingWord(null);
+              }}
+              className={`text-xs md:text-sm shrink-0 ${existingWord ? "flex-1" : ""}`}
             >
               <X className="h-4 w-4" />
+              <span className="ml-1">Закрыть</span>
             </Button>
           </div>
         </div>

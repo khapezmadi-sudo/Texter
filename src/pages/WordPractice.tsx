@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Sidebar } from "@/components/Sidebar";
+import { MobileNav } from "@/components/MobileNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -175,7 +176,8 @@ export function WordPractice() {
     return (
       <div className="flex h-screen">
         <Sidebar />
-        <div className="flex-1 flex items-center justify-center">
+        <MobileNav />
+        <div className="flex-1 flex items-center justify-center pt-14 lg:pt-0">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
         </div>
       </div>
@@ -186,8 +188,9 @@ export function WordPractice() {
     return (
       <div className="flex h-screen">
         <Sidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <Card className="w-96">
+        <MobileNav />
+        <div className="flex-1 flex items-center justify-center pt-14 lg:pt-0">
+          <Card className="w-96 mx-4">
             <CardContent className="p-6 text-center">
               <Target className="h-12 w-12 mx-auto text-green-500 mb-4" />
               <p className="text-muted-foreground mb-4">
@@ -195,7 +198,7 @@ export function WordPractice() {
                 <br />
                 Все слова повторены.
               </p>
-              <div className="flex gap-2 justify-center">
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
                 <Button onClick={() => navigate("/words")}>
                   Добавить слова
                 </Button>
@@ -227,8 +230,9 @@ export function WordPractice() {
     return (
       <div className="flex h-screen">
         <Sidebar />
-        <div className="flex-1 overflow-auto">
-          <div className="p-8 max-w-2xl mx-auto">
+        <MobileNav />
+        <div className="flex-1 overflow-auto pt-14 lg:pt-0">
+          <div className="p-4 lg:p-8 max-w-2xl mx-auto">
             <Button
               variant="ghost"
               className="mb-4"
@@ -329,8 +333,9 @@ export function WordPractice() {
   return (
     <div className="flex h-screen">
       <Sidebar />
-      <div className="flex-1 overflow-auto">
-        <div className="p-8 max-w-2xl mx-auto">
+      <MobileNav />
+      <div className="flex-1 overflow-auto pt-14 lg:pt-0">
+        <div className="p-4 lg:p-8 max-w-2xl mx-auto">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <Button variant="ghost" onClick={() => navigate("/words")}>

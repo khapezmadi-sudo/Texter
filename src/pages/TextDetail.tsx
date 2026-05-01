@@ -38,6 +38,7 @@ import {
   Copy,
   Check,
   Sparkles,
+  Eye,
 } from "lucide-react";
 import {
   getText,
@@ -56,6 +57,7 @@ export function TextDetail() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [isViewMode, setIsViewMode] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const analysisRef = useRef<HTMLDivElement>(null);
@@ -89,6 +91,7 @@ export function TextDetail() {
   const [editDifficulty, setEditDifficulty] =
     useState<Text["difficulty"]>("medium");
 
+  // Load text and previous attempts
   useEffect(() => {
     const loadData = async () => {
       if (!id) return;
@@ -99,8 +102,17 @@ export function TextDetail() {
         ]);
         setText(textData);
         setAttempts(attemptsData);
-        if (attemptsData.length > 0 && attemptsData[0].translation) {
-          setTranslation(attemptsData[0].translation);
+
+        // If there are previous attempts, restore the latest one
+        if (attemptsData.length > 0) {
+          const latestAttempt = attemptsData[0];
+          setTranslation(latestAttempt.translation);
+          setRating(latestAttempt.rating);
+          setErrors(latestAttempt.errors);
+          setCustomErrorTypes(latestAttempt.custom_error_types || []);
+          setNotes(latestAttempt.notes || "");
+          setExtractedWords(latestAttempt.extracted_words?.join(", ") || "");
+          setErrorExamples(latestAttempt.error_examples || []);
         }
       } catch (error) {
         console.error("Error loading data:", error);
@@ -134,6 +146,8 @@ export function TextDetail() {
       setElapsedTime(0);
     }
     setIsTimerRunning(true);
+    setShowAnalysis(false);
+    setIsViewMode(false);
     if (text?.status === "draft") {
       updateText(text.id, { status: "pending_review" });
     }
@@ -149,9 +163,26 @@ export function TextDetail() {
     }
   };
 
+  const handleViewOld = (attempt?: typeof previousAttempt) => {
+    const targetAttempt = attempt || previousAttempt;
+    if (targetAttempt) {
+      setTranslation(targetAttempt.translation);
+      setRating(targetAttempt.rating);
+      setErrors(targetAttempt.errors);
+      setCustomErrorTypes(targetAttempt.custom_error_types || []);
+      setNotes(targetAttempt.notes || "");
+      setExtractedWords(targetAttempt.extracted_words?.join(", ") || "");
+      setErrorExamples(targetAttempt.error_examples || []);
+      setShowAnalysis(true);
+      setIsViewMode(true);
+      setShowHistory(false);
+    }
+  };
+
   const handleComplete = () => {
     setIsTimerRunning(false);
     setShowAnalysis(true);
+    setIsViewMode(false);
     // Scroll to analysis after a short delay to let it render
     setTimeout(() => {
       analysisRef.current?.scrollIntoView({
@@ -540,26 +571,63 @@ export function TextDetail() {
               <CardContent>
                 {!isTimerRunning && !showAnalysis && (
                   <div className="text-center py-8">
-                    <p className="text-muted-foreground mb-4">
-                      {previousAttempt
-                        ? "Этот текст уже переводился. Хочешь попробовать снова?"
-                        : "Готов начать перевод?"}
-                    </p>
-                    <Button
-                      onClick={() => handleStartTranslation(!!previousAttempt)}
-                    >
-                      <Play className="h-4 w-4 mr-2" />
-                      {previousAttempt ? "Новая попытка" : "Начать перевод"}
-                    </Button>
-                    {previousAttempt && (
-                      <Button
-                        variant="outline"
-                        className="ml-2"
-                        onClick={handleContinueOld}
-                      >
-                        <RotateCcw className="h-4 w-4 mr-2" />
-                        Продолжить старый
-                      </Button>
+                    {previousAttempt ? (
+                      <div className="space-y-4">
+                        <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                          <p className="text-blue-800 font-medium mb-2">
+                            ✓ Этот текст уже переведён
+                          </p>
+                          <p className="text-sm text-blue-600">
+                            Оценка: {previousAttempt.rating}/5 •{" "}
+                            {new Date(
+                              previousAttempt.created_at,
+                            ).toLocaleDateString("ru-RU")}
+                          </p>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                            <Button
+                              onClick={() => handleStartTranslation(true)}
+                            >
+                              <Play className="h-4 w-4 mr-2" />
+                              Новая попытка
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={handleContinueOld}
+                            >
+                              <RotateCcw className="h-4 w-4 mr-2" />
+                              Продолжить старый
+                            </Button>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                            <Button
+                              variant="secondary"
+                              onClick={() => handleViewOld()}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Просмотреть старый перевод
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              onClick={() => setShowHistory(true)}
+                            >
+                              <History className="h-4 w-4 mr-2" />
+                              История ({attempts.length})
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-muted-foreground mb-4">
+                          Готов начать перевод?
+                        </p>
+                        <Button onClick={() => handleStartTranslation(false)}>
+                          <Play className="h-4 w-4 mr-2" />
+                          Начать перевод
+                        </Button>
+                      </>
                     )}
                   </div>
                 )}
@@ -596,13 +664,16 @@ export function TextDetail() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <Label className="mb-3 block">Оцени свой перевод</Label>
+                  <Label className="mb-3 block">
+                    {isViewMode ? "Оценка перевода" : "Оцени свой перевод"}
+                  </Label>
                   <div className="flex gap-2">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
                         key={star}
-                        onClick={() => setRating(star)}
-                        className={`text-2xl ${rating >= star ? "text-yellow-500" : "text-gray-300"}`}
+                        onClick={() => !isViewMode && setRating(star)}
+                        disabled={isViewMode}
+                        className={`text-2xl ${rating >= star ? "text-yellow-500" : "text-gray-300"} ${isViewMode ? "cursor-default" : "cursor-pointer"}`}
                       >
                         <Star
                           className="h-8 w-8"
@@ -633,12 +704,14 @@ export function TextDetail() {
                     }).map(([key, label]) => (
                       <label
                         key={key}
-                        className="flex items-center gap-2 cursor-pointer"
+                        className={`flex items-center gap-2 ${isViewMode ? "" : "cursor-pointer"}`}
                       >
                         <input
                           type="checkbox"
                           checked={errors[key as keyof typeof errors]}
+                          disabled={isViewMode}
                           onChange={(e) =>
+                            !isViewMode &&
                             setErrors({ ...errors, [key]: e.target.checked })
                           }
                         />
@@ -657,45 +730,59 @@ export function TextDetail() {
                         <Badge
                           key={type}
                           variant="secondary"
-                          className="cursor-pointer hover:bg-red-100"
-                          onClick={() => handleRemoveErrorType(type)}
+                          className={
+                            isViewMode ? "" : "cursor-pointer hover:bg-red-100"
+                          }
+                          onClick={() =>
+                            !isViewMode && handleRemoveErrorType(type)
+                          }
                         >
-                          {type} ×
+                          {type}
+                          {!isViewMode && " ×"}
                         </Badge>
                       ))}
                     </div>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Например: фразовые глаголы, согласование..."
-                        value={newErrorType}
-                        onChange={(e) => setNewErrorType(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleAddErrorType();
-                          }
-                        }}
-                        className="flex-1"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleAddErrorType}
-                      >
-                        Добавить
-                      </Button>
-                    </div>
+                    {!isViewMode && (
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Например: фразовые глаголы, согласование..."
+                          value={newErrorType}
+                          onChange={(e) => setNewErrorType(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddErrorType();
+                            }
+                          }}
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleAddErrorType}
+                        >
+                          Добавить
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="notes">Подробные заметки</Label>
+                  <Label htmlFor="notes">
+                    {isViewMode ? "Заметки" : "Подробные заметки"}
+                  </Label>
                   <Textarea
                     id="notes"
-                    placeholder="Опиши конкретные ошибки и что исправил..."
+                    placeholder={
+                      isViewMode
+                        ? ""
+                        : "Опиши конкретные ошибки и что исправил..."
+                    }
                     value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
+                    disabled={isViewMode}
+                    onChange={(e) => !isViewMode && setNotes(e.target.value)}
                     className="mt-2"
                   />
                 </div>
@@ -704,17 +791,19 @@ export function TextDetail() {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <Label>Примеры ошибок</Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleAddErrorExample}
-                    >
-                      Добавить пример
-                    </Button>
+                    {!isViewMode && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAddErrorExample}
+                      >
+                        Добавить пример
+                      </Button>
+                    )}
                   </div>
 
-                  {errorExamples.length === 0 && (
+                  {errorExamples.length === 0 && !isViewMode && (
                     <p className="text-sm text-muted-foreground mb-2">
                       Нет примеров. Добавь или импортируй из ИИ.
                     </p>
@@ -731,7 +820,9 @@ export function TextDetail() {
                               </Label>
                               <Input
                                 value={example.original}
+                                disabled={isViewMode}
                                 onChange={(e) =>
+                                  !isViewMode &&
                                   handleUpdateErrorExample(
                                     index,
                                     "original",
@@ -748,7 +839,9 @@ export function TextDetail() {
                               </Label>
                               <Input
                                 value={example.corrected}
+                                disabled={isViewMode}
                                 onChange={(e) =>
+                                  !isViewMode &&
                                   handleUpdateErrorExample(
                                     index,
                                     "corrected",
@@ -767,7 +860,9 @@ export function TextDetail() {
                               </Label>
                               <Input
                                 value={example.error_type}
+                                disabled={isViewMode}
                                 onChange={(e) =>
+                                  !isViewMode &&
                                   handleUpdateErrorExample(
                                     index,
                                     "error_type",
@@ -784,7 +879,9 @@ export function TextDetail() {
                               </Label>
                               <Input
                                 value={example.explanation}
+                                disabled={isViewMode}
                                 onChange={(e) =>
+                                  !isViewMode &&
                                   handleUpdateErrorExample(
                                     index,
                                     "explanation",
@@ -796,15 +893,17 @@ export function TextDetail() {
                               />
                             </div>
                           </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-500 h-7"
-                            onClick={() => handleRemoveErrorExample(index)}
-                          >
-                            Удалить пример
-                          </Button>
+                          {!isViewMode && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-500 h-7"
+                              onClick={() => handleRemoveErrorExample(index)}
+                            >
+                              Удалить пример
+                            </Button>
+                          )}
                         </CardContent>
                       </Card>
                     ))}
@@ -819,29 +918,35 @@ export function TextDetail() {
                     id="words"
                     placeholder="utilize, however, significant..."
                     value={extractedWords}
+                    disabled={isViewMode}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setExtractedWords(e.target.value)
+                      !isViewMode && setExtractedWords(e.target.value)
                     }
                     className="mt-2"
                   />
                 </div>
 
                 <div className="flex gap-4 pt-4">
-                  <Button
-                    className="flex-1"
-                    onClick={handleSaveAnalysis}
-                    disabled={saving || rating === 0}
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    {saving
-                      ? "Сохранение..."
-                      : rating >= 4
-                        ? "Отметить завершённым"
-                        : "Пометить для повторения"}
-                  </Button>
+                  {!isViewMode && (
+                    <Button
+                      className="flex-1"
+                      onClick={handleSaveAnalysis}
+                      disabled={saving || rating === 0}
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      {saving
+                        ? "Сохранение..."
+                        : rating >= 4
+                          ? "Отметить завершённым"
+                          : "Пометить для повторения"}
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
-                    onClick={() => setShowAnalysis(false)}
+                    onClick={() => {
+                      setShowAnalysis(false);
+                      setIsViewMode(false);
+                    }}
                   >
                     Назад к переводу
                   </Button>
@@ -1013,11 +1118,22 @@ export function TextDetail() {
                               {attempt.extracted_words.length > 0 && (
                                 <div className="text-sm text-muted-foreground mt-2">
                                   <p className="font-medium text-xs mb-1">
-                                    Слова:
+                                    Слова для запоминания:
                                   </p>
                                   <p>{attempt.extracted_words.join(", ")}</p>
                                 </div>
                               )}
+
+                              {/* Кнопка просмотра */}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="w-full mt-2 text-xs"
+                                onClick={() => handleViewOld(attempt)}
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                Просмотреть этот перевод
+                              </Button>
                             </CardContent>
                           </Card>
                         ))}

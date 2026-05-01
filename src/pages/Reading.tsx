@@ -7,11 +7,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, X, Save, BookOpen } from "lucide-react";
+import { Plus, Search, X, Save, BookOpen, Pencil, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
   getReadingTexts,
   createReadingText,
+  updateReadingText,
+  deleteReadingText,
   type ReadingText,
 } from "@/lib/readingTexts";
 
@@ -27,6 +29,8 @@ export function Reading() {
     difficulty: "medium" as "easy" | "medium" | "hard",
     source: "",
   });
+  const [editingText, setEditingText] = useState<ReadingText | null>(null);
+  const [showEditForm, setShowEditForm] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -86,6 +90,67 @@ export function Reading() {
         tag.toLowerCase().includes(searchQuery.toLowerCase()),
       ),
   );
+
+  const handleEdit = (text: ReadingText, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingText(text);
+    setNewText({
+      title: text.title,
+      content: text.content,
+      tags: text.tags.join(", "),
+      difficulty: text.difficulty,
+      source: text.source || "",
+    });
+    setShowEditForm(true);
+  };
+
+  const handleUpdateText = async () => {
+    if (!editingText || !newText.title.trim() || !newText.content.trim())
+      return;
+
+    try {
+      const tags = newText.tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+
+      await updateReadingText(editingText.id, {
+        title: newText.title.trim(),
+        content: newText.content.trim(),
+        tags: [...tags, "чтение"],
+        source: newText.source.trim() || undefined,
+        difficulty: newText.difficulty,
+      });
+
+      setEditingText(null);
+      setShowEditForm(false);
+      setNewText({
+        title: "",
+        content: "",
+        tags: "",
+        difficulty: "medium",
+        source: "",
+      });
+
+      const data = await getReadingTexts();
+      setTexts(data);
+    } catch (error) {
+      console.error("Error updating text:", error);
+    }
+  };
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm("Удалить этот текст? Это действие нельзя отменить.")) return;
+
+    try {
+      await deleteReadingText(id);
+      const data = await getReadingTexts();
+      setTexts(data);
+    } catch (error) {
+      console.error("Error deleting text:", error);
+    }
+  };
 
   return (
     <div className="flex h-screen">
@@ -225,6 +290,130 @@ export function Reading() {
                   </Card>
                 )}
 
+                {/* Форма редактирования текста */}
+                {showEditForm && editingText && (
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle>Редактировать текст</CardTitle>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setShowEditForm(false);
+                            setEditingText(null);
+                            setNewText({
+                              title: "",
+                              content: "",
+                              tags: "",
+                              difficulty: "medium",
+                              source: "",
+                            });
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <Label htmlFor="edit-title">Название</Label>
+                        <Input
+                          id="edit-title"
+                          value={newText.title}
+                          onChange={(e) =>
+                            setNewText({ ...newText, title: e.target.value })
+                          }
+                          placeholder="Введите название текста"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-content">Текст</Label>
+                        <Textarea
+                          id="edit-content"
+                          value={newText.content}
+                          onChange={(e) =>
+                            setNewText({ ...newText, content: e.target.value })
+                          }
+                          placeholder="Введите текст на английском языке"
+                          rows={8}
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <Label htmlFor="edit-tags">
+                            Теги (через запятую)
+                          </Label>
+                          <Input
+                            id="edit-tags"
+                            value={newText.tags}
+                            onChange={(e) =>
+                              setNewText({ ...newText, tags: e.target.value })
+                            }
+                            placeholder="например: технологии, культура, наука"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="edit-difficulty">Сложность</Label>
+                          <select
+                            id="edit-difficulty"
+                            value={newText.difficulty}
+                            onChange={(e) =>
+                              setNewText({
+                                ...newText,
+                                difficulty: e.target.value as
+                                  | "easy"
+                                  | "medium"
+                                  | "hard",
+                              })
+                            }
+                            className="w-full p-2 border border-gray-300 rounded-md"
+                          >
+                            <option value="easy">Лёгкий</option>
+                            <option value="medium">Средний</option>
+                            <option value="hard">Сложный</option>
+                          </select>
+                        </div>
+                        <div>
+                          <Label htmlFor="edit-source">
+                            Источник (опционально)
+                          </Label>
+                          <Input
+                            id="edit-source"
+                            value={newText.source}
+                            onChange={(e) =>
+                              setNewText({ ...newText, source: e.target.value })
+                            }
+                            placeholder="Например: BBC, The Guardian"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end space-x-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setShowEditForm(false);
+                            setEditingText(null);
+                            setNewText({
+                              title: "",
+                              content: "",
+                              tags: "",
+                              difficulty: "medium",
+                              source: "",
+                            });
+                          }}
+                        >
+                          Отмена
+                        </Button>
+                        <Button onClick={handleUpdateText}>
+                          <Save className="h-4 w-4 mr-2" />
+                          Сохранить изменения
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Список текстов */}
                 {filteredTexts.length === 0 ? (
                   <Card>
@@ -253,14 +442,34 @@ export function Reading() {
                     {filteredTexts.map((text) => (
                       <Card
                         key={text.id}
-                        className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.99]"
+                        className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.99] group"
                         onClick={() => navigate(`/reading/${text.id}`)}
                       >
                         <CardHeader className="p-4 md:p-6">
                           <div className="space-y-2">
-                            <CardTitle className="text-base md:text-lg leading-tight">
-                              {text.title}
-                            </CardTitle>
+                            <div className="flex items-start justify-between gap-2">
+                              <CardTitle className="text-base md:text-lg leading-tight flex-1">
+                                {text.title}
+                              </CardTitle>
+                              <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={(e) => handleEdit(text, e)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
+                                  onClick={(e) => handleDelete(text.id, e)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
                             <div className="flex flex-wrap gap-1.5 md:gap-2">
                               <Badge
                                 className={`text-xs ${
